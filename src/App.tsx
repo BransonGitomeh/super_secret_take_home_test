@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { EffectCallback, useState, useEffect } from 'react';
 import './App.css';
 import moment from "moment";
 import _ from "underscore"
 
 import { usePath } from 'hookrouter';
 import { useHistory } from "react-router-dom";
+
+import axios from 'axios';
+
+import { ReactComponent as Spinner } from './spinner.svg';
 
 import {
   BrowserRouter as Router,
@@ -16,59 +20,11 @@ import {
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap/dist/js/bootstrap.js';
 
-const Customers = [{
-  id: "customer_1"
-}]
+const Customers: Customer[] = []
 
-const Books = [{
-  id: "book_1",
-  title: "Book one",
-  description: "Amazing book"
-}, {
-  id: "book_2",
-  title: "Book Two",
-  description: "Best Book ever"
-}, {
-  id: "book_3",
-  title: "Book Two",
-  description: "Best Book ever"
-}, {
-  id: "book_4",
-  title: "Book Two",
-  description: "Best Book ever"
-}]
+const Books: Book[] = []
 
-const RentedEvents = [{
-  id: "rent_5_days_ago_for_2 days",
-  rentDate: moment().subtract(5, 'd'),
-  customer: {
-    id: "customer_1"
-  },
-  quantity: 7,
-  booksRented: [{
-    id: "book_1",
-    quantity: 3
-  }, {
-    id: "book_2",
-    quantity: 4
-  }],
-  payments: [{
-    date: moment().subtract(7, 'd'),
-    id: "payment_1",
-    amount: 3
-  }],
-  returns: [{
-    date: moment().subtract(2, 'd'),
-    books: [{
-      id: "book_1",
-      quantity: 2
-    }, {
-      id: "book_2",
-      quantity: 1
-    }]
-  }]
-}]
-
+const RentedEvents: RentReport[] = []
 
 // Generated On the fly from the Engine
 // charge type
@@ -236,8 +192,9 @@ const ChargeCalculator = (RentedEvents: any): {
   };
 }
 
-const Debug_Ui = () => {
-  const [{ charges, payments, returns, books, rentEvents }, setCount] = useState(ChargeCalculator(RentedEvents));
+const Debug_Ui = (props: { data: [Book[], Customer[], RentReport[]] }) => {
+  const { data: [Books, Customers, RentReports] } = props
+  const [{ charges, payments, returns, books, rentEvents }, setCount] = useState(ChargeCalculator(RentReports));
 
   // react router with two pages 
   // - admin 
@@ -246,41 +203,46 @@ const Debug_Ui = () => {
   // - login where password is always 1:2:3:4:5
   // later, add the ability to login as a customer by provising a hardcoded password just for demo
   return (
-    <table className="table">
-      <thead className="thead-dark">
-        <tr>
-          <th scope="col">Metric</th>
-          <th scope="col">Number Of Records</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th scope="row">RentEvents</th>
-          <td>{rentEvents.length}</td>
-        </tr>
-        <tr>
-          <th scope="row">Charges</th>
-          <td> {charges.length}</td>
-        </tr>
-        <tr>
-          <th scope="row">Payments</th>
-          <td>{payments.length}</td>
-        </tr>
-        <tr>
-          <th scope="row">Returns</th>
-          <td>{returns.length}</td>
-        </tr>
-        <tr>
-          <th scope="row">Books</th>
-          <td>{books.length}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div className="row">
+      <div className="col-3">
+        <table className="table">
+          <thead className="thead-dark">
+            <tr>
+              <th scope="col">Metric</th>
+              <th scope="col">Number Of Records</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">RentEvents</th>
+              <td>{rentEvents.length}</td>
+            </tr>
+            <tr>
+              <th scope="row">Charges</th>
+              <td> {charges.length}</td>
+            </tr>
+            <tr>
+              <th scope="row">Payments</th>
+              <td>{payments.length}</td>
+            </tr>
+            <tr>
+              <th scope="row">Returns</th>
+              <td>{returns.length}</td>
+            </tr>
+            <tr>
+              <th scope="row">Books</th>
+              <td>{books.length}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
-const ChargesUI = () => {
-  const [{ charges, rentEvents }, setCount] = useState(ChargeCalculator(RentedEvents));
+const ChargesUI = (props: { charges: Charge[] }) => {
+  const [charges] = useState(props.charges)
+  // const [{ charges, rentEvents }, setCount] = useState(ChargeCalculator(RentedEvents));
   // react router with two pages 
   // - admin 
   // - booking from book lists
@@ -288,39 +250,50 @@ const ChargesUI = () => {
   // - login where password is always 1:2:3:4:5
   // later, add the ability to login as a customer by provising a hardcoded password just for demo
   return (
-    <div>
-      <table className="table">
-        <thead>
-          <tr>
-            <th scope="col">Customer</th>
-            <th scope="col">Currently Rented</th>
-            <th scope="col">Total Rented</th>
-            <th scope="col">Days Billed For</th>
-            <th scope="col">ToTal Bill</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            charges.map(({ customer, books, days, cost }) => {
-              return <tr>
-                <th scope="row">{customer.id}</th>
-                <td>{books}</td>
-                <td>-</td>
-                <td>{days}</td>
-                <td>$ {cost}</td>
-              </tr>
-            })
-          }
-        </tbody>
-      </table>
+    <div className="row">
+      <div className="col-8">
+        <table className="table">
+          <thead>
+            <tr>
+              <th scope="col">Customer</th>
+              <th scope="col">Currently Rented</th>
+              <th scope="col">Total Rented</th>
+              <th scope="col">Days Billed For</th>
+              <th scope="col">ToTal Bill</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              charges.map(({ customer, books, days, cost }) => {
+                return <tr>
+                  <th scope="row">{customer.id}</th>
+                  <td>{books}</td>
+                  <td>-</td>
+                  <td>{days}</td>
+                  <td>$ {cost}</td>
+                </tr>
+              })
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
   );
+}
+
+function useAsyncEffect(effect: (isCanceled: () => boolean) => Promise<void>, dependencies?: any[]) {
+  return useEffect(() => {
+    let canceled = false;
+    effect(() => canceled);
+    return () => { canceled = true; }
+  }, dependencies)
 }
 
 const BookCardUi = (props: any) => {
   const { book } = props;
   let [pic] = useState(`https://picsum.photos/200?random=${Math.floor(Math.random() * 6) + 1}`)
   let [count, setCount] = useState(1)
+  let [addedBook, setAddedBook] = useState(false)
 
   return <div className="card" style={{ width: "18rem", margin: 10 }}>
     <img className="card-img-top" src={pic} alt="Card image cap" />
@@ -331,7 +304,10 @@ const BookCardUi = (props: any) => {
       </p>
       <div className="input-group mb-3">
         <div className="input-group-prepend">
-          <button className="btn btn-outline-secondary" onClick={() => setCount(count - 1 == 0 ? 1 : count - 1)}>
+          <button className="btn btn-outline-secondary" onClick={() => {
+            setCount(count - 1 == 0 ? 1 : count - 1)
+
+          }}>
             -
           </button>
         </div>
@@ -349,16 +325,24 @@ const BookCardUi = (props: any) => {
         </div>
       </div>
 
-
-      <a href="#" className="btn btn-sm btn-primary">
-        Add {count} book{count > 1 ? 's' : ''} to my liblary
-      </a>
+      <button
+        className={`btn btn-sm btn-${addedBook ? 'success' : 'primary'}`}
+        onClick={() => {
+          setAddedBook(true)
+          setTimeout(() => {
+            setCount(1)
+            setAddedBook(false)
+          }, 2000);
+        }}
+      >
+        {addedBook ? "Successfully added to your books" : `Add ${count} of this books to my liblary`}
+      </button>
     </div>
   </div>
 }
 
-const EcommerceUi = () => {
-  const [books, setBooks] = useState(Books)
+const EcommerceUi = (props: { books: Book[] }) => {
+  const [books, setBooks] = useState(props.books)
   // react router with two pages 
   // - admin 
   // - booking from book lists
@@ -399,6 +383,37 @@ const Receipt = () => {
   // later, add the ability to login as a customer by provising a hardcoded password just for demo
   return (
     <h1> Receipt UI</h1>
+  );
+}
+
+const Cart = (props: { selectedBooks: Book[] }) => {
+  const [books, setBooks] = useState(props.selectedBooks)
+  return (
+    <div className="row">
+      <div className="col-4">
+        <div className="container-fluid">
+          {books.map(book => <ul className="list-group list-group-flush">
+            <li className="list-group-item d-flex justify-content-between align-items-center">{book.title}
+              <button
+                className="badge badge-danger"
+                onClick={() => {
+                  setBooks(books.filter(x => x.id !== book.id))
+                }}
+              >
+                remove
+                </button>
+            </li>
+          </ul>)}
+
+          <button
+            style={{ margin: 10 }}
+            className={`btn btn-sm btn-primary`}
+          >
+            Confirm Addition of this 10 books
+      </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -450,42 +465,116 @@ const Navbar = (props: any) => {
           })
         }
       </ul>
+
+      <ul className="nav justify-content-end">
+        <li className="nav-item">
+          <Link to="/cart" className="nav-link" href="#">
+            Cart(0)
+    </Link>
+        </li>
+      </ul>
     </div>
   </nav>
   )
 }
 
+export async function http(
+  request: RequestInfo
+): Promise<any> {
+  const response = await fetch(request);
+  const body = await response.json();
+  return body;
+}
+
 const App = () => {
-  // react router with two pages 
-  // - admin 
-  // - booking from book lists
-  // - simple cart solution to create Rentings
   // - login where password is always 1:2:3:4:5
   // later, add the ability to login as a customer by provising a hardcoded password just for demo
-  return (
-    <Router>
+  let [loadedData, setLoadedData] = useState(false)
+  let [books, setBooks] = useState([] as Book[])
+  let [customers, setCustomers] = useState([] as Customer[])
+  let [rentevents, setRentEvents] = useState([] as RentReport[])
+  let [selectedBooks, setSelectedBooks] = useState([] as Book[])
+  let [charges, setCharges] = useState([] as Charge[])
+
+  const fetchAppData = async (id: string): Promise<[
+    Book[],
+    Customer[],
+    RentReport[]
+  ]> => Promise.all([
+    http(
+      "http://localhost:9000/api/books"
+    ),
+    http(
+      "http://localhost:9000/api/customers"
+    ),
+    http(
+      "http://localhost:9000/api/rentevents"
+    )
+  ])
+
+  const effectId = Math.random().toString().split(".")[1]
+
+  useEffect(() => {
+    // Create an scoped async function in the hook
+    async function AsycnOp() {
+      const [
+        books,
+        customers,
+        rentevents
+      ] = await fetchAppData(effectId);
+      console.log(books,
+        customers,
+        rentevents)
+
+      // TODO: Still OK to do some effect, useEffect hasn't been canceled yet.
+      setBooks(books);
+      setCustomers(customers);
+      setRentEvents(rentevents);
+      const { charges } = ChargeCalculator(rentevents)
+      setCharges(charges)
+      setLoadedData(true)
+
+    }
+    // Execute the created function directly
+
+    AsycnOp();
+  }, []);
+
+  return !loadedData
+    // show spinner
+    ? <div className="preloader">
+      <Spinner />
+    </div>
+
+    // show all the routes we need
+    : <Router>
+      {console.log(books)}
       <div>
         <Switch>
           <Route path="/debug">
             <Navbar />
-            <Debug_Ui />
+            <Debug_Ui data={[books, customers, rentevents]} />
           </Route>
           <Route path="/charges">
             <Navbar />
-            <ChargesUI />
+            <ChargesUI charges={charges} />
           </Route>
           <Route path="/pos">
             <Navbar />
             <POS_Ui />
           </Route>
+          <Route path="/cart">
+            <Navbar />
+            <Cart selectedBooks={selectedBooks} />
+          </Route>
           <Route path="/">
             <Navbar />
-            <EcommerceUi />
+            <EcommerceUi books={books} />
           </Route>
         </Switch>
       </div>
     </Router>
-  );
+
 }
 
 export default App;

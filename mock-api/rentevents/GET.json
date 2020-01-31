@@ -1,0 +1,42 @@
+[
+    {
+        "id": "rent_5_days_ago_for_2 days",
+        "rentDate": "2020-01-26T17:28:59.466Z",
+        "customer": {
+            "id": "customer_1"
+        },
+        "quantity": 7,
+        "booksRented": [
+            {
+                "id": "book_1",
+                "quantity": 3
+            },
+            {
+                "id": "book_2",
+                "quantity": 4
+            }
+        ],
+        "payments": [
+            {
+                "date": "2020-01-24T17:28:59.467Z",
+                "id": "payment_1",
+                "amount": 3
+            }
+        ],
+        "returns": [
+            {
+                "date": "2020-01-29T17:28:59.467Z",
+                "books": [
+                    {
+                        "id": "book_1",
+                        "quantity": 2
+                    },
+                    {
+                        "id": "book_2",
+                        "quantity": 1
+                    }
+                ]
+            }
+        ]
+    }
+]

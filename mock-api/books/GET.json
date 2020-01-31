@@ -1,0 +1,27 @@
+[
+    {
+        "id": "book_1",
+        "title": "Book one",
+        "description": "Amazing book"
+    },
+    {
+        "id": "book_2",
+        "title": "Book Two",
+        "description": "Best Book ever"
+    },
+    {
+        "id": "book_3",
+        "title": "Book Two S",
+        "description": "Other Book ever"
+    },
+    {
+        "id": "book_4",
+        "title": "Book Four",
+        "description": "Ultimate Book ever"
+    },
+    {
+        "id": "book_5",
+        "title": "Book Four Pro Max",
+        "description": "Mega Best Book ever"
+    }
+]
