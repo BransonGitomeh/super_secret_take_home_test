@@ -336,13 +336,16 @@ const EcommerceUi = (props: { books: Book[], addToUserLiblary: (book: Book) => v
   // - login where password is always 1:2:3:4:5
   // later, add the ability to login as a customer by provising a hardcoded password just for demo
   return (
-    <div className="container-fluid" style={{ marginTop: 50 }}>
+    <div className="container-fluid" style={{ marginTop: 20 }}>
       <div className="row">
+
         {
           books
             .map((book: any) => new Book(book.id, book.quantity, book.title, book.description))
             .map((book: Book) => <div className="col-lg"><BookCardUi book={book} addToUserLiblary={props.addToUserLiblary} /></div>)
         }
+
+
       </div>
     </div>
   );
@@ -372,18 +375,20 @@ const Receipt = () => {
   );
 }
 
-const Cart = (props: { cart: Book[], setBooks: Function, confirmBooks: (book: Book[]) => void }) => {
-  const { cart, setBooks, confirmBooks } = props
+const Cart = (props: { cart: Book[], setBooks: (books: Book[]) => void, selectedCustomer: Customer, confirmBooks: (book: Book[]) => void }) => {
+  const { cart, setBooks, confirmBooks, selectedCustomer } = props
 
+  const [saved, setSaved] = useState(false)
   let totalBooks = 0;
   for (var i = 0; i < cart.length; i++) {
     totalBooks += cart[i].quantity;
   }
 
   return (
-    <div className="row">
-      <div className="col-4">
+    <div className="row sticky-top">
+      <div className="col-12">
         <div className="container-fluid">
+
           {cart.map(book => <ul className="list-group list-group-flush">
             <li className="list-group-item d-flex justify-content-between align-items-center">{book.quantity} Copies of "{book.title}"
               <button
@@ -400,13 +405,21 @@ const Cart = (props: { cart: Book[], setBooks: Function, confirmBooks: (book: Bo
           {cart.length !== 0
             ? <button
               style={{ margin: 10 }}
-              className={`btn btn-sm btn-primary`}
-              onClick={() => confirmBooks(cart)}
+              className={`btn btn-sm ${!saved ? "btn-primary" : "btn-success"}`}
+              onClick={() => {
+                confirmBooks(cart)
+                setSaved(true)
+                setTimeout(() => {
+                  setSaved(false)
+                  setBooks([] as Book[])
+                }, 2000);
+              }}
             >
-              Confirm Addition of this {totalBooks} books
+              {!saved ? `Confirm Addition of this ${totalBooks} books` : "Added book as a rental"}
+
             </button>
             : <div style={{ margin: 30 }} className="alert alert-warning" role="alert">
-              You do not have any books on your cart, please add some from <Link to="/">here</Link>
+              <b>{selectedCustomer.id}</b> does not have any books on this cart, please add some from <Link to="/">here</Link>
             </div>}
         </div>
       </div>
@@ -414,10 +427,10 @@ const Cart = (props: { cart: Book[], setBooks: Function, confirmBooks: (book: Bo
   );
 }
 
-const SelectCustomer = (props: { customers: Customer[], selectedCustomer: string, selectCustomer: (customer: string) => void }) => {
+const SelectCustomer = (props: { customers: Customer[], selectedCustomer: Customer, selectCustomer: (customer: string) => void }) => {
   const { customers, selectCustomer, selectedCustomer } = props
 
-  return <div className="dropdown">
+  return <div className="dropdown" style={{ zIndex: 1025 }}>
     <button
       className="btn btn-secondary dropdown-toggle"
       type="button"
@@ -426,7 +439,7 @@ const SelectCustomer = (props: { customers: Customer[], selectedCustomer: string
       aria-haspopup="true"
       aria-expanded="false"
     >
-      {!selectedCustomer ? `Select Customer ${customers.length}` : selectedCustomer}
+      {!selectedCustomer ? `Select Customer ${customers.length}` : selectedCustomer.id}
     </button>
     <div className="dropdown-menu" aria-labelledby="dropdownMenuButton">
       {
@@ -436,14 +449,14 @@ const SelectCustomer = (props: { customers: Customer[], selectedCustomer: string
             selectCustomer(customer.id.toString())
           }}
         >
-          {selectedCustomer}
+          {selectedCustomer.id}
         </button>)
       }
     </div >
   </div >
 }
 
-const Navbar = (props: { cart: Book[], customers: Customer[], selectedCustomer:string, selectCustomer: (customer: string) => void }) => {
+const Navbar = (props: { cart: Book[], customers: Customer[], selectedCustomer: Customer, selectCustomer: (customer: string) => void }) => {
   const { cart, customers, selectCustomer, selectedCustomer } = props
   const path = usePath();
   const history = useHistory();
@@ -453,7 +466,7 @@ const Navbar = (props: { cart: Book[], customers: Customer[], selectedCustomer:s
   const links: { [link: string]: string } = {
     Ecommerce: "/",
     Charges: "/charges",
-    POS: "/pos",
+    // POS: "/pos",
     Monitoring: "/debug"
   }
   // const [cart, setCart] = useState(props.cart);
@@ -493,19 +506,17 @@ const Navbar = (props: { cart: Book[], customers: Customer[], selectedCustomer:s
         }
       </ul>
 
-      <ul className="nav justify-content-end">
+      <ul className="navbar-nav ml-auto">
         <li className="nav-item">
           <Link to="/cart" className="nav-link" href="#">
             Cart({cart.length})
     </Link>
         </li>
-      </ul>
-
-      <ul className="nav justify-content-end">
         <li className="nav-item">
           <SelectCustomer customers={customers} selectedCustomer={selectedCustomer} selectCustomer={selectCustomer} />
         </li>
       </ul>
+
 
     </div>
   </nav>
@@ -523,8 +534,9 @@ export async function http(
 const App = () => {
   // - login where password is always 1:2:3:4:5
   // later, add the ability to login as a customer by provising a hardcoded password just for demo
+  let [selectedCustomer, setSelectedCustomer] = useState({ id: '' } as Customer)
+
   let [loadedData, setLoadedData] = useState(false)
-  let [selectedCustomer, setSelectedCustomer] = useState('' as string)
   let [books, setBooks] = useState([] as Book[])
   let [customers, setCustomers] = useState([] as Customer[])
   let [rentevents, setRentEvents] = useState([] as RentReport[])
@@ -565,7 +577,7 @@ const App = () => {
       setRentEvents(rentevents);
       const { charges } = ChargeCalculator(rentevents)
       setCharges(charges)
-      setSelectedCustomer(customers[0].id)
+      setSelectedCustomer(customers[0])
       setLoadedData(true)
     }
     // Execute the created function directly
@@ -580,10 +592,18 @@ const App = () => {
 
   function confirmRented(books: Book[]): void {
     // create rental using customer id thats selected
+    let rentevent: RentReport = rentevents.filter(event => event.customer.id === selectedCustomer.id)[0]
+    let rentEventLeft: RentReport[] = rentevents.filter(event => event.customer.id !== selectedCustomer.id)
+
+    rentevent.booksRented = [...books, ...rentevent.booksRented]
+    rentevent.books = rentevent.booksRented.length
+    setRentEvents([rentevent, ...rentEventLeft]);
+    const { charges } = ChargeCalculator([rentevent, ...rentEventLeft])
+    setCharges(charges)
   }
 
   function SelectCustomer(customer: string): void {
-    setSelectedCustomer(customer)
+    setSelectedCustomer(new Customer(customer))
   }
 
   return !loadedData
@@ -605,17 +625,28 @@ const App = () => {
             <Navbar cart={cart} selectedCustomer={selectedCustomer} customers={customers} selectCustomer={SelectCustomer} />
             <ChargesUI charges={charges} />
           </Route>
-          <Route path="/pos">
+          {/* <Route path="/pos">
             <Navbar cart={cart} selectedCustomer={selectedCustomer} customers={customers} selectCustomer={SelectCustomer} />
             <POS_Ui />
-          </Route>
+          </Route> */}
           <Route path="/cart">
             <Navbar cart={cart} selectedCustomer={selectedCustomer} customers={customers} selectCustomer={SelectCustomer} />
-            <Cart cart={cart} confirmBooks={(books: Book[]) => confirmRented(books)} setBooks={(books: Book[]) => setCart(books)} />
+            <div className="row">
+              <div className="col-lg-4">
+                <Cart cart={cart} confirmBooks={(books: Book[]) => confirmRented(books)} selectedCustomer={selectedCustomer} setBooks={(books: Book[]) => setCart(books)} />
+              </div>
+            </div>
           </Route>
           <Route path="/">
-            <Navbar cart={cart} selectedCustomer={selectedCustomer}  customers={customers} selectCustomer={SelectCustomer} />
-            <EcommerceUi books={books} addToUserLiblary={addToUserLiblary} />
+            <Navbar cart={cart} selectedCustomer={selectedCustomer} customers={customers} selectCustomer={SelectCustomer} />
+            <div className="row">
+              <div className="col-lg-9">
+                <EcommerceUi books={books} addToUserLiblary={addToUserLiblary} />
+              </div>
+              <div className="col-lg-3">
+                <Cart cart={cart} confirmBooks={(books: Book[]) => confirmRented(books)} selectedCustomer={selectedCustomer} setBooks={(books: Book[]) => setCart(books)} />
+              </div>
+            </div>
           </Route>
         </Switch>
       </div>
