@@ -1,5 +1,4 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useState } from 'react';
 import './App.css';
 import moment from "moment";
 import _ from "underscore"
@@ -27,6 +26,7 @@ const RentedEvents = [{
     quantity: 4
   }],
   payments: [{
+    date: moment().subtract(7, 'd'),
     id: "payment_1",
     amount: 3
   }],
@@ -123,7 +123,7 @@ class RentReport {
 
     // Get number of books we are billing for
     // get unique books and remove the retuned once from this customers logs
-    this.books = booksRented.map((book:Book) => book.quantity).reduce((a: number, b: number) => a + b, 0);
+    this.books = booksRented.map((book: Book) => book.quantity).reduce((a: number, b: number) => a + b, 0);
   }
 }
 
@@ -149,31 +149,35 @@ class Charge {
   }
 }
 
-const ChargeCalculator = (RentedEvents: any): Charge[] => {
+const ChargeCalculator = (RentedEvents: any): {
+  charges: Charge[],
+  rentEvents: RentReport[]
+} => {
   // go through the json and generate the rent objects
-  const rents: RentReport[] = RentedEvents.map((rent: RentReport) => {
+  const rentEvent: RentReport[] = RentedEvents.map((rent: RentReport) => {
     const {
       id,
       rentDate,
-      customerId,
+      customer,
       booksRented,
       returns,
       payments
     } = rent
 
-    // init the customer
-    let customer: Customer = new Customer(customerId)
-
     // initialize the books
     return new RentReport(id, rentDate, customer, returns, booksRented, payments)
   })
 
-  const Charges: Charge[] = rents.map((rent: RentReport) => new Charge(rent.customer, rent.days, rent.books))
+  const charges: Charge[] = rentEvent.map((rent: RentReport) => new Charge(rent.customer, rent.days, rent.books))
 
-  return Charges;
+  return {
+    charges: charges,
+    rentEvents: rentEvent
+  };
 }
 
 const ChargesUI = () => {
+  const [{ charges, rentEvents }, setCount] = useState(ChargeCalculator(RentedEvents));
   // react router with two pages 
   // - admin 
   // - booking from book lists
@@ -182,6 +186,7 @@ const ChargesUI = () => {
   // later, add the ability to login as a customer by provising a hardcoded password just for demo
   return (
     <div>
+      <h1> Charges UI</h1>
       <table>
         <thead>
           <th>customer</th>
@@ -191,9 +196,9 @@ const ChargesUI = () => {
         </thead>
         <tbody>
           {
-            ChargeCalculator(RentedEvents).map(({ customer: { id }, books, days, cost }) => {
+            charges.map(({ customer, books, days, cost }) => {
               return <tr>
-                <td>{id}</td>
+                <td>{customer.id}</td>
                 <td>{books}</td>
                 <td>{days}</td>
                 <td>{cost}</td>
