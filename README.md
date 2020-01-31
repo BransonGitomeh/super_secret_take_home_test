@@ -1,3 +1,32 @@
+## Problem Statement
+It is a program to calculate and print a statement of a customer's charges at a book rental store.
+It is divided into 3 stories. Pick each story in sequence, solve it, test it, and then pick up next.
+The next story should be applied in the same solution and your design should start
+evolving
+
+# System parts Breakdown
+- Rentalstore
+    - customer
+       - rent book
+    - books
+       - rentable
+    - charges
+        - calculate rent charges
+        - print statements
+
+# Story evolution methodology
+ - Stories evolve the product needs
+    - story solve sequence in series
+        1. solve
+            - state changes
+            - JSX changes
+        2. test
+            - state changes
+            - JSX changes
+    - design elements should start evolving - UI/UX
+        - Release versions on github and using semantic versioning for story completion
+
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
